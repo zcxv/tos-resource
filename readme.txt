@@ -25,13 +25,13 @@ INPUT - input folder; folder must have file struct like unpacker result, ex:
 IES Worker
 
 Unpacker:
-java -cp tos_resource_v2.jar -file INPUT -handler HANDLER
+java -cp tos_resource_v2.jar ru.rage.tos.resource.IesWorker -file INPUT -handler HANDLER
 
 INPUT - input folder or file
 HANDLER - path to class with implements IIesHandler (ex: ru.rage.tos.resource.test.IesTestHandler)
 
 Packer:
-java -cp tos_resource_v2.jar -file INPUT -pack -handler HANDLER
+java -cp tos_resource_v2.jar ru.rage.tos.resource.IesWorker -file INPUT -pack -handler HANDLER
 
 INPUT - input folder or file
 HANDLER - path to class with implements IIesHandler (ex: ru.rage.tos.resource.test.IesTestHandler)
