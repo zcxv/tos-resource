@@ -9,11 +9,21 @@ import java.io.File;
 public class Element {
 	private final static byte[] tail = {
 		0x50, 0x4B, 0x05, 0x06, //zip magic
-		0x00, 0x00, 0x00, 0x00, 0x01, 0x09, 0x00, 0x00 //game magic
+		0x00, 0x00, 0x00, 0x00, //see IPFFile
+		0x00, 0x00, 0x00, 0x00 //see IPFFile
 	};
 	public static byte[] getTail() {
 		return tail;
 	}
+	
+	private final static byte[] zipMagic = {
+			0x50, 0x4B, 0x05, 0x06	
+	};
+	public static byte[] getZipMagic() {
+		return zipMagic;
+	}
+	
+	private File archiveFile;
 	
 	private File file;
 	private String name;
@@ -24,6 +34,12 @@ public class Element {
 	private int fileOffset;
 	private byte[] data;
 	
+	public File getArchiveFile() {
+		return archiveFile;
+	}
+	public void setArchiveFile(File archiveFile) {
+		this.archiveFile = archiveFile;
+	}
 	public File getFile() {
 		return file;
 	}

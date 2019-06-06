@@ -66,6 +66,12 @@ public class Unpacker {
 			MappedByteBuffer buffer = ch.map(MapMode.READ_ONLY, 0, ch.size());
 			buffer.order(ByteOrder.LITTLE_ENDIAN);
 			
+			buffer.position(buffer.limit() - 8);
+			IPFFile ipf = new IPFFile();
+			ipf.setSubversion(buffer.getInt());
+			ipf.setVersion(buffer.getInt());
+			ipf.save(createFolderStruct(archOut, "version"));
+			
 			int header = buffer.limit() - Element.getTail().length - 4;
 			System.out.printf(" ... jump to %d", header);
 			buffer.position(header);
@@ -118,8 +124,10 @@ public class Unpacker {
 				element.setOriginalSize(originalSize);
 				element.setFileOffset(fileOffset);
 				element.setArchive(f.getName());
+				element.setArchiveFile(f);
 				
-				exec.execute(() -> process(element));
+				process(element);
+				//exec.execute(() -> process(element));
 			}
 		}
 		
@@ -137,20 +145,22 @@ public class Unpacker {
 	}
 	
 	private static void process(Element element) {
-		try(RandomAccessFile r = new RandomAccessFile(new File(in, element.getArchive()), "r"); FileChannel fc = r.getChannel()) {
+		try(RandomAccessFile r = new RandomAccessFile(element.getArchiveFile(), "r"); FileChannel fc = r.getChannel()) {
 			MappedByteBuffer mbuffer = fc.map(MapMode.READ_ONLY, 0, fc.size());
 			mbuffer.position(element.getFileOffset());
 			element.setData(new byte[element.getCompressedSize()]);
 			mbuffer.get(element.getData());
 		} catch(IOException e) {
 			System.out.printf("Failed read %s from archive %s\r\n", element.getFile().toString(), element.getArchive());
-			if(stacktrace)
+			if(stacktrace) {
 				e.printStackTrace();
+			}
 			return;
 		}
 		
-		if(element.getCompressedSize() != element.getOriginalSize())
+		if(element.getCompressedSize() != element.getOriginalSize()) {
 			element.setData(decompress(element.getData()));
+		}
 		
 		try {
 			Files.write(element.getFile().toPath(), element.getData(), StandardOpenOption.CREATE);

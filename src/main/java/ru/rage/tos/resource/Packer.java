@@ -57,6 +57,10 @@ public class Packer {
 	
 	private static void scan(File file, String name, String archive) {
 		if(file.isFile()) {
+			if(file.getName().equals("version")) {
+				return;
+			}
+			
 			Element e = new Element();
 			e.setFile(file);
 			e.setName(name.substring(1, name.length()));
@@ -74,12 +78,17 @@ public class Packer {
 	
 	private static void process(String archive, List<Element> elements) {
 		long processStartPack = System.currentTimeMillis();
+		
+		IPFFile ipfFile = new IPFFile();
+		ipfFile.restore(new File(in, archive));
+		
 		File out = new File("./", archive);
 		try {
 			out.createNewFile();
 		} catch(IOException e) {
 			throw new RuntimeException(e);
 		}
+		
 		
 		try(RandomAccessFile raf = new RandomAccessFile(out, "rw"); FileChannel ch = raf.getChannel()) {
 			int offset = 0;
@@ -138,8 +147,9 @@ public class Packer {
 			}
 			
 			{ //write tail
-				buffer.put(Element.getTail());
-				
+				buffer.put(Element.getZipMagic());
+				buffer.putInt(ipfFile.getSubversion());
+				buffer.putInt(ipfFile.getVersion());
 				buffer.flip();
 				ch.write(buffer);
 			}
