@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -57,6 +58,7 @@ public class Unpacker {
 	
 	private static void unpack(File f) throws Throwable {
 		File archOut = null;
+		IPFFile ipf = null;
 		long unpackStartTime = System.currentTimeMillis();
 		short fcount;
 		try(RandomAccessFile raf = new RandomAccessFile(f, "r"); FileChannel ch = raf.getChannel()) {
@@ -65,12 +67,6 @@ public class Unpacker {
 			System.out.printf("map file ro 0->%d", ch.size());
 			MappedByteBuffer buffer = ch.map(MapMode.READ_ONLY, 0, ch.size());
 			buffer.order(ByteOrder.LITTLE_ENDIAN);
-			
-			buffer.position(buffer.limit() - 8);
-			IPFFile ipf = new IPFFile();
-			ipf.setSubversion(buffer.getInt());
-			ipf.setVersion(buffer.getInt());
-			ipf.save(createFolderStruct(archOut, "version"));
 			
 			int header = buffer.limit() - Element.getTail().length - 4;
 			System.out.printf(" ... jump to %d", header);
@@ -116,6 +112,18 @@ public class Unpacker {
 				
 				File file = createFolderStruct(archOut, fname);
 				
+				if(ipf == null) {
+					int position = buffer.position();
+					buffer.position(buffer.limit() - 8);
+					ipf = new IPFFile();
+					ipf.setSubversion(buffer.getInt());
+					ipf.setVersion(buffer.getInt());
+					ipf.setArchiveFile(f);
+					ipf.save(archOut);
+					buffer.position(position);
+				}
+				
+				
 				final Element element = new Element();
 				element.setFile(file);
 				element.setName(fname);
@@ -124,7 +132,7 @@ public class Unpacker {
 				element.setOriginalSize(originalSize);
 				element.setFileOffset(fileOffset);
 				element.setArchive(f.getName());
-				element.setArchiveFile(f);
+				element.setIPFFile(ipf);
 				
 				process(element);
 				//exec.execute(() -> process(element));
@@ -145,7 +153,7 @@ public class Unpacker {
 	}
 	
 	private static void process(Element element) {
-		try(RandomAccessFile r = new RandomAccessFile(element.getArchiveFile(), "r"); FileChannel fc = r.getChannel()) {
+		try(RandomAccessFile r = new RandomAccessFile(element.getIPFFile().getArchiveFile(), "r"); FileChannel fc = r.getChannel()) {
 			MappedByteBuffer mbuffer = fc.map(MapMode.READ_ONLY, 0, fc.size());
 			mbuffer.position(element.getFileOffset());
 			element.setData(new byte[element.getCompressedSize()]);
@@ -159,7 +167,7 @@ public class Unpacker {
 		}
 		
 		if(element.getCompressedSize() != element.getOriginalSize()) {
-			element.setData(decompress(element.getData()));
+			element.setData(decompress(element, element.getData()));
 		}
 		
 		try {
@@ -171,15 +179,44 @@ public class Unpacker {
 		}
 	}
 	
-	private static byte[] decompress(byte[] data) {
+	private static byte[] decompress(Element element, byte[] data) {
 		Inflater inflater = new Inflater(true);
-		try(InflaterInputStream is = new InflaterInputStream(new ByteArrayInputStream(data), inflater)) {
+		
+		final InputStream input;
+		if(element.getIPFFile().getVersion() >= 11035) {
+			input = new PkwareInputStream(IPFFile.password, new ByteArrayInputStream(data));
+		} else {
+			input = new ByteArrayInputStream(data);
+		}
+		
+//		byte[] test = new byte[data.length];
+//		try {
+//			input.read(test);
+//		} catch (IOException e1) {
+//			e1.printStackTrace();
+//		}
+//		
+//		for(int i = 0; i < 0x48; i += 24) {
+//			for(int j = 0; j < 24; j++) {
+//				int index = i + j;
+//				if(index >= test.length) {
+//					continue;
+//				}
+//				
+//				System.out.printf("%2x", test[index]);
+//				if(j % 2 != 0) {
+//					System.out.print(" ");
+//				}
+//			}
+//			System.out.print("\n");
+//		}
+//		System.out.print("\n");
+		
+		try(InflaterInputStream is = new InflaterInputStream(input, inflater)) {
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			while(is.available() > 0) {
-				int b = is.read();
-				if(is.available() > 0) //ололо костыль
-					baos.write(b);
-			}
+			do {
+				baos.write(is.read());
+			} while(is.available() > 0);
 			return baos.toByteArray();
 		} catch(IOException e) {
 			e.printStackTrace();

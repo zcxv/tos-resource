@@ -33,6 +33,10 @@ import lombok.Data;
  */
 @Data
 public class IPFFile {
+	public final static byte[] password = {
+			0x6f, 0x66, 0x4f, 0x31, 0x61, 0x30, 0x75, 0x65, 0x58, 0x41, 
+			0x3f, 0x20, 0x5b, (byte)0xff, 0x73, 0x20, 0x68, 0x20, 0x25, 0x3f
+	};
 	
 	// Open BETA:
 	//  0x00, 0x00, 0x00, 0x00 subversion 
@@ -43,6 +47,8 @@ public class IPFFile {
 	
 	private int version;
 	private int subversion;
+	
+	private File archiveFile;
 	
 	public void save(File dir) {
 		try(ByteChannel channel = Files.newByteChannel(new File(dir, "version").toPath(), 

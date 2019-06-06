@@ -3,6 +3,7 @@ package ru.rage.tos.resource;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -88,6 +89,7 @@ public class Packer {
 		} catch(IOException e) {
 			throw new RuntimeException(e);
 		}
+		ipfFile.setArchiveFile(out);
 		
 		
 		try(RandomAccessFile raf = new RandomAccessFile(out, "rw"); FileChannel ch = raf.getChannel()) {
@@ -95,12 +97,21 @@ public class Packer {
 			CRC32 crc = new CRC32();
 			for(Element element : elements) { //write compressed files
 				byte[] buffer = Files.readAllBytes(element.getFile().toPath());
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				Deflater deflater = new Deflater(level, true);
-				try(DeflaterOutputStream dos = new DeflaterOutputStream(baos, deflater)) {
-					dos.write(buffer, 0, buffer.length);
-					dos.flush();
+				
+				final OutputStream os;
+				final Deflater deflater = new Deflater(level, true);
+				final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				if(ipfFile.getVersion() >= 11035) {
+					os = new DeflaterOutputStream(new PkwareOutputStream(IPFFile.password, baos), deflater);
+				} else {
+					os = new DeflaterOutputStream(baos, deflater);
+				}
+				
+				try {
+					os.write(buffer, 0, buffer.length);
+					os.flush();
 				} finally {
+					os.close();
 					deflater.end();
 				}
 				

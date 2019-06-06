@@ -23,7 +23,7 @@ public class Element {
 		return zipMagic;
 	}
 	
-	private File archiveFile;
+	private IPFFile ipf;
 	
 	private File file;
 	private String name;
@@ -34,11 +34,11 @@ public class Element {
 	private int fileOffset;
 	private byte[] data;
 	
-	public File getArchiveFile() {
-		return archiveFile;
+	public IPFFile getIPFFile() {
+		return ipf;
 	}
-	public void setArchiveFile(File archiveFile) {
-		this.archiveFile = archiveFile;
+	public void setIPFFile(IPFFile ipf) {
+		this.ipf = ipf;
 	}
 	public File getFile() {
 		return file;
